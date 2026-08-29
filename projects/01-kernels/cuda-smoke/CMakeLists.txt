@@ -3,13 +3,6 @@ add_executable(
     src/cuda_smoke.cu
 )
 
-target_compile_options(
-    cuda_smoke
-    PRIVATE
-        $<$<COMPILE_LANGUAGE:CUDA>:-O2>
-        $<$<COMPILE_LANGUAGE:CXX>:-O2>
-)
-
 if(BUILD_TESTING)
 
     add_test(
