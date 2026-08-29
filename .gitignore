@@ -1,0 +1,40 @@
+# Build
+/build/
+/cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+
+# CUDA products
+*.o
+*.obj
+*.a
+*.so
+*.cubin
+*.ptx
+*.fatbin
+
+# Local data
+/datasets/
+/results/
+
+# Scientific data
+*.root
+*.h5
+*.hdf5
+*.npy
+*.npz
+
+# Python / notebooks
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Editors
+.vscode/
+.idea/
+*~
+.DS_Store
