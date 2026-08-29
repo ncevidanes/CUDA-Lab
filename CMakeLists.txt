@@ -17,3 +17,7 @@ include(CTest)
 add_subdirectory(
     projects/01-kernels/cuda-smoke
 )
+
+add_subdirectory(
+    projects/01-kernels/vector-add-file
+)
