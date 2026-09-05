@@ -21,3 +21,7 @@ add_subdirectory(
 add_subdirectory(
     projects/01-kernels/vector-add-file
 )
+
+add_subdirectory(
+    projects/02-memory/cuda-memcpy-baseline
+)
