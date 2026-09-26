@@ -5,17 +5,24 @@ add_executable(
     src/root_cuda_multifile.cu
 )
 
-target_link_libraries(
-    root_cuda_multifile
-    PRIVATE
-        ROOT::Core
-        ROOT::RIO
-        ROOT::Tree
-        ROOT::Hist
+add_executable(
+    root_hits_energy
+    src/root_hits_energy.cu
 )
 
-set_target_properties(
-    root_cuda_multifile
-    PROPERTIES
-        CUDA_SEPARABLE_COMPILATION ON
-)
+foreach(target root_cuda_multifile root_hits_energy)
+    target_link_libraries(
+        ${target}
+        PRIVATE
+            ROOT::Core
+            ROOT::RIO
+            ROOT::Tree
+            ROOT::Hist
+    )
+
+    set_target_properties(
+        ${target}
+        PROPERTIES
+            CUDA_SEPARABLE_COMPILATION ON
+    )
+endforeach()
