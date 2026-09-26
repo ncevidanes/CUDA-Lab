@@ -1,4 +1,4 @@
-find_package(ROOT REQUIRED COMPONENTS Core RIO Tree Hist)
+find_package(ROOT REQUIRED COMPONENTS Core RIO Tree TreePlayer Hist)
 
 add_executable(
     root_cuda_multifile
@@ -23,12 +23,17 @@ foreach(target root_cuda_multifile root_hits_energy)
             ROOT::Core
             ROOT::RIO
             ROOT::Tree
+            ROOT::TreePlayer
             ROOT::Hist
     )
 
     set_target_properties(
         ${target}
         PROPERTIES
+            CXX_STANDARD 20
+            CXX_STANDARD_REQUIRED ON
+            CUDA_STANDARD 20
+            CUDA_STANDARD_REQUIRED ON
             CUDA_SEPARABLE_COMPILATION ON
     )
 endforeach()
