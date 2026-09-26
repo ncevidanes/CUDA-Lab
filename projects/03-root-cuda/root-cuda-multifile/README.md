@@ -1,121 +1,102 @@
 # ROOT + CUDA multi-file pipeline
 
-This project integrates ROOT I/O with CUDA processing for multiple `.root` files.
+This project keeps ROOT responsible for `.root` I/O/deserialization on the CPU and sends plain numeric buffers to CUDA.
 
-## Input contract
+Two executables are kept deliberately:
 
-Default schema:
+- `root_cuda_multifile`: the original generic/synthetic teaching prototype (`Events`, `x_true`, `x_hat`, optional `energy`);
+- `root_hits_energy`: the real ATLAS-HITS 100k pipeline for `CollectionTree`.
 
-- `TTree`: `Events`
-- `x_true`: `std::vector<float>`
-- `x_hat`: `std::vector<float>`
-- `energy`: `std::vector<float>` (optional)
+## Real dataset contract — `mc21_14TeV_Epos_100k`
 
-All names are configurable at runtime.
+Validated dataset:
 
-The vectors are flattened into pinned host buffers in batches. ROOT remains responsible for file I/O and deserialization; CUDA only sees plain numeric buffers.
+- 8 ROOT files: `combined_mc21_14TeV_Epos_part1.root` ... `part8.root`;
+- 100,000 entries total;
+- tree: `CollectionTree`;
+- identical schema in all files;
+- energy branches:
+  - `TileCalHit_energy`;
+  - `LArHitEMB_energy`;
+  - `LArHitEMEC_energy`;
+  - `LArHitHEC_energy`;
+  - `LArHitFCAL_energy`;
+- event identifier: `EventNumber`.
 
-## Calculations
+Each energy branch is read as an array of `double`. Events are batched and flattened into one energy vector plus segment offsets. A segment is one `(event, calorimeter subsystem)` pair.
 
-For every batch, both CPU and GPU calculate:
+## CPU/GPU calculation
 
-- residual squared: `(x_hat - x_true)^2`;
-- global RMSE via reduction;
-- energy sum (when the energy branch exists);
-- energy histogram (CPU loop versus CUDA `atomicAdd`).
+For every segment, CPU and GPU independently calculate:
 
-GPU stages are timed independently:
+- number of hits;
+- sum of hit energies;
+- maximum hit energy.
 
-- H2D;
-- kernels/reductions/histogram;
-- D2H.
+The CUDA implementation launches one block per segment. Threads walk the segment and cooperate through shared memory to reduce the sum and maximum. The output is validated segment-by-segment against the CPU reference.
 
-ROOT read time and CPU compute time are also recorded.
+A 100k run requires:
+
+- exactly 100,000 events;
+- exactly 500,000 event×subdetector segments;
+- all segment comparisons PASS;
+- no non-finite energy values.
+
+## Timing
+
+The run records separately:
+
+- ROOT read + flatten/data-adapter time;
+- CPU compute time;
+- pageable-to-pinned host packing time;
+- H2D transfer;
+- CUDA kernel;
+- D2H transfer.
+
+This allows both compute-only and transfer-inclusive comparisons.
 
 ## Outputs
 
-The executable writes:
+`root_hits_energy` writes:
 
 - `summary.csv`;
 - `per_file.csv`;
-- `histogram.csv`;
-- `run_manifest.json`;
-- `results.root` with CPU/GPU histograms and a `FileMetrics` tree.
+- `per_subdetector.csv`;
+- `results.root` containing `EventDetectorMetrics` and `RESULT_GATE`;
+- `run.log` when launched by the Colab script.
 
-`RESULT_GATE=PASS` requires CPU/GPU RMSE agreement, energy-sum agreement and exact histogram equality for all successfully processed files; any file-level `FAIL` fails the run. Unreadable files or files without the requested tree/required branches are reported as `SKIP` and preserved in the audit table.
+## Colab pipeline
 
-## Build
+```text
+Google Drive/raw
+      ↓
+Colab local disk (SHA-256 verified)
+      ↓
+ROOT / CPU
+      ↓
+flattened buffers + offsets
+      ↓
+CUDA segmented reduction
+      ↓
+CPU/GPU numerical gates
+      ↓
+Colab results
+      ↓
+Google Drive/results/<RUN_ID>
+```
 
-The repository top-level option is intentionally OFF by default so existing CUDA-only CI does not require ROOT.
+Run from `notebooks/colab/root_hits_energy_100k.ipynb`, or manually after mounting Drive:
+
+```bash
+bash scripts/colab_root_cuda_bootstrap.sh
+bash scripts/colab_root_hits_energy_run.sh
+```
+
+The top-level CMake option remains OFF by default so the CUDA-only CI does not require ROOT:
 
 ```bash
 cmake -S . -B build \
   -DCUDA_LAB_ENABLE_ROOT_CUDA=ON \
   -DCMAKE_CUDA_ARCHITECTURES=75
-cmake --build build --target root_cuda_multifile -j2
+cmake --build build --target root_hits_energy -j2
 ```
-
-## Colab execution
-
-After Google Drive is mounted in Colab:
-
-```bash
-bash scripts/colab_root_cuda_bootstrap.sh
-bash scripts/colab_root_cuda_run.sh
-```
-
-Default Drive locations:
-
-```text
-input : /content/drive/MyDrive/CUDA-Lab/root-input
-output: /content/drive/MyDrive/CUDA-Lab/root-results/<RUN_ID>
-```
-
-The run is first written to `/content/cuda-root-results/<RUN_ID>` and then mirrored to Drive.
-
-### Branch overrides
-
-```bash
-ROOT_TREE_NAME=CollectionTree \
-ROOT_TRUTH_BRANCH=x_true \
-ROOT_RECO_BRANCH=x_hat \
-ROOT_ENERGY_BRANCH=energy \
-ROOT_BATCH_ELEMENTS=2097152 \
-ROOT_CUDA_THREADS=256 \
-  bash scripts/colab_root_cuda_run.sh
-```
-
-To disable the energy branch:
-
-```bash
-ROOT_ENERGY_BRANCH='' bash scripts/colab_root_cuda_run.sh
-```
-
-## External HD -> Drive staging
-
-On the Ubuntu machine where the external HD is connected:
-
-```bash
-bash scripts/stage_root_hd_to_drive.sh
-```
-
-It uses the already-configured `gdrive-cuda:` rclone remote by default. If `EXTERNAL_ROOT_DIR` is not set, the script searches the usual Linux removable-media mount points and selects the directory containing the largest number of `.root` files.
-
-For an explicit source:
-
-```bash
-EXTERNAL_ROOT_DIR=/media/$USER/HD/Dataset \
-  bash scripts/stage_root_hd_to_drive.sh
-```
-
-The transfer is checksum-aware and never deletes the source or remote files.
-
-## Smoke test
-
-In Colab, with Drive mounted:
-
-```bash
-bash scripts/colab_root_cuda_smoke.sh
-```
-
-The smoke test generates four synthetic ROOT files, builds the ROOT+CUDA target, processes all files and writes the result bundle to Drive.
