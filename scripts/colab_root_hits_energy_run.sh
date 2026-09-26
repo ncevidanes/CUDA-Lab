@@ -54,8 +54,23 @@ BIN="$BUILD_DIR/projects/03-root-cuda/root-cuda-multifile/root_hits_energy"
 [[ -x "$BIN" ]] || { echo "BINARY_GATE=FAIL"; exit 1; }
 echo "BINARY_GATE=PASS"
 
+echo "=== MICROMAMBA CHECK ==="
+MM_BIN="${MICROMAMBA_BIN:-}"
+if [[ -z "$MM_BIN" ]]; then
+  MM_BIN="$(command -v micromamba 2>/dev/null || true)"
+fi
+if [[ -z "$MM_BIN" && -x /content/bin/micromamba ]]; then
+  MM_BIN="/content/bin/micromamba"
+fi
+if [[ -z "$MM_BIN" || ! -x "$MM_BIN" ]]; then
+  echo "MICROMAMBA_GATE=FAIL"
+  exit 1
+fi
+echo "MICROMAMBA_BIN=$MM_BIN"
+echo "MICROMAMBA_GATE=PASS"
+
 echo "=== FULL 100K RUN ==="
-micromamba run -p "$ENV_PREFIX" "$BIN" \
+"$MM_BIN" run -p "$ENV_PREFIX" "$BIN" \
   --input-list "$INPUT_LIST" \
   --output-dir "$LOCAL_RESULTS" \
   --tree CollectionTree \
