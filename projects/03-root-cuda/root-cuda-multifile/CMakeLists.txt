@@ -10,6 +10,12 @@ add_executable(
     src/root_hits_energy.cu
 )
 
+target_include_directories(
+    root_hits_energy
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
 foreach(target root_cuda_multifile root_hits_energy)
     target_link_libraries(
         ${target}
