@@ -44,16 +44,23 @@ micromamba run -p "$ENV_PREFIX" cmake \
   -S "$REPO_ROOT" \
   -B "$BUILD_DIR" \
   -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
   -DCUDA_LAB_ENABLE_ROOT_CUDA=ON \
   -DCMAKE_CUDA_ARCHITECTURES="$CUDA_ARCH" \
   -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc \
   -DCMAKE_CXX_COMPILER=/usr/bin/g++ \
   -DCMAKE_PREFIX_PATH="$ENV_PREFIX"
 
-micromamba run -p "$ENV_PREFIX" cmake --build "$BUILD_DIR" --target root_cuda_multifile -j2
+micromamba run -p "$ENV_PREFIX" cmake --build "$BUILD_DIR" \
+  --target root_cuda_multifile root_hits_energy -j2
 
-BIN="$BUILD_DIR/projects/03-root-cuda/root-cuda-multifile/root_cuda_multifile"
-[[ -x "$BIN" ]] || { echo "BUILD_GATE=FAIL" >&2; exit 11; }
+GENERIC_BIN="$BUILD_DIR/projects/03-root-cuda/root-cuda-multifile/root_cuda_multifile"
+HITS_BIN="$BUILD_DIR/projects/03-root-cuda/root-cuda-multifile/root_hits_energy"
+[[ -x "$GENERIC_BIN" ]] || { echo "GENERIC_BUILD_GATE=FAIL" >&2; exit 11; }
+[[ -x "$HITS_BIN" ]] || { echo "HITS_BUILD_GATE=FAIL" >&2; exit 12; }
 
-echo "ROOT_CUDA_BINARY=$BIN"
+echo "ROOT_CUDA_BINARY=$GENERIC_BIN"
+echo "ROOT_HITS_ENERGY_BINARY=$HITS_BIN"
+echo "GENERIC_BUILD_GATE=PASS"
+echo "HITS_BUILD_GATE=PASS"
 echo "BUILD_GATE=PASS"
