@@ -10,8 +10,12 @@ RUN_ID="${RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)}"
 LOCAL_RESULTS="${LOCAL_RESULTS:-/content/root-results/${RUN_ID}}"
 
 DRIVE_ROOT="/content/drive/MyDrive"
+EXPECTED_DATASET_DIR="$DRIVE_ROOT/Doutorado/Doutorado/Orientação Luciano/BackUp_linux_V02/readingHits/datasets/$DATASET_NAME"
 DATASET_DIR="${ROOT_DATASET_DIR:-}"
 
+if [[ -z "$DATASET_DIR" && -d "$EXPECTED_DATASET_DIR/raw" ]]; then
+  DATASET_DIR="$EXPECTED_DATASET_DIR"
+fi
 if [[ -z "$DATASET_DIR" ]]; then
   DATASET_DIR="$(find "$DRIVE_ROOT" -type d -name "$DATASET_NAME" -print -quit 2>/dev/null || true)"
 fi
