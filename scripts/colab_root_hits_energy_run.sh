@@ -81,6 +81,43 @@ echo "=== FULL 100K RUN ==="
 grep -q '^RESULT_GATE=PASS$' "$LOCAL_RESULTS/run.log"
 echo "FULL_RUN_GATE=PASS"
 
+echo "=== ROOT RESULT ARTIFACT CHECK ==="
+"$MM_BIN" run -p "$ENV_PREFIX" python - "$LOCAL_RESULTS/results.root" <<'PY'
+import os
+import sys
+import ROOT
+
+path = sys.argv[1]
+if not os.path.isfile(path):
+    print("RESULT_ROOT_FILE_GATE=FAIL reason=missing_file")
+    raise SystemExit(1)
+
+f = ROOT.TFile.Open(path, "READ")
+if not f or f.IsZombie():
+    print("RESULT_ROOT_FILE_GATE=FAIL reason=zombie_file")
+    raise SystemExit(1)
+
+tree = f.Get("EventDetectorMetrics")
+gate = f.Get("RESULT_GATE")
+entries = int(tree.GetEntries()) if tree else -1
+gate_value = gate.GetTitle() if gate else "MISSING"
+
+print(f"RESULT_ROOT_ENTRIES={entries}")
+print(f"RESULT_ROOT_NAMED_GATE={gate_value}")
+
+if entries != 500000:
+    print("RESULT_ROOT_TREE_GATE=FAIL")
+    raise SystemExit(1)
+print("RESULT_ROOT_TREE_GATE=PASS")
+
+if gate_value != "PASS":
+    print("RESULT_ROOT_NAMED_GATE_CHECK=FAIL")
+    raise SystemExit(1)
+print("RESULT_ROOT_NAMED_GATE_CHECK=PASS")
+print("RESULT_ROOT_GATE=PASS")
+f.Close()
+PY
+
 DRIVE_RESULTS="$DATASET_DIR/results/$RUN_ID"
 mkdir -p "$DRIVE_RESULTS"
 cp -a "$LOCAL_RESULTS"/. "$DRIVE_RESULTS"/
