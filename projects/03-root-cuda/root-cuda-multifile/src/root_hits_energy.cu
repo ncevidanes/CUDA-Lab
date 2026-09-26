@@ -8,6 +8,7 @@
 #include <iostream>
 #include <limits>
 #include <vector>
+#include <utility>
 #include "root_hits_pipeline.hpp"
 
 int main(int argc,char** argv){try{
