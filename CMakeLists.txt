@@ -25,3 +25,11 @@ add_subdirectory(
 add_subdirectory(
     projects/02-memory/cuda-memcpy-baseline
 )
+
+option(CUDA_LAB_ENABLE_ROOT_CUDA "Build ROOT + CUDA integration targets" OFF)
+
+if(CUDA_LAB_ENABLE_ROOT_CUDA)
+    add_subdirectory(
+        projects/03-root-cuda/root-cuda-multifile
+    )
+endif()
